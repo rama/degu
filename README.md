@@ -6,3 +6,7 @@ Degu is a tiny browser based on the [Line Mode Browser](https://en.wikipedia.org
 (='.'=)  ,
 (")_(") //
 (")_(")//
+
+(\___/)
+(='.'=) ,
+(_)-(_)//
