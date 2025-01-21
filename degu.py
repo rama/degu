@@ -152,18 +152,35 @@ class HTMLParser:
         return self.finish()
 
 
-def print_tree(node, indent=0):
-    print(" " * indent, node)
-    for child in node.children:
-        print_tree(child, indent + 2)
+class Browser:
+    def __init__(self):
+        import os
 
+        self.size = os.get_terminal_size()
+        self.history = []
+        self.current = None
 
-def load(url):
-    tree = HTMLParser(url.request()).parse()
-    print_tree(tree)
+    def load(self, url):
+        if self.current:
+            self.history.append(self.current)
+        self.current = url
+        tree = HTMLParser(url.request()).parse()
+        # self.print_tree(tree)
+
+    def back(self):
+        self.current = None
+        self.load(self.history.pop())
+
+    def display(self):
+        pass
+
+    def print_tree(self, node, indent=0):
+        print(" " * indent, node)
+        for child in node.children:
+            self.print_tree(child, indent + 2)
 
 
 if __name__ == "__main__":
     import sys
 
-    load(URL(sys.argv[1]))
+    Browser().load(URL(sys.argv[1]))
