@@ -78,23 +78,52 @@ class HTMLParser:
     def __init__(self, body):
         self.body = body
         self.unfinished = []
+        self.SELF_CLOSING_TAGS = [
+            "area",
+            "base",
+            "br",
+            "col",
+            "embed",
+            "hr",
+            "img",
+            "input",
+            "link",
+            "meta",
+            "param",
+            "source",
+            "track",
+            "wbr",
+        ]
 
     def add_text(self, text):
+        if text.isspace():
+            return
         parent = self.unfinished[-1]
         node = Text(text, parent)
         parent.children.append(node)
 
     def add_tag(self, tag):
+        tag = self.get_tag_name(tag)
+        if tag.startswith("!"):
+            return
         if tag.startswith("/"):
             if len(self.unfinished) == 1:
                 return
             node = self.unfinished.pop()
             parent = self.unfinished[-1]
             parent.children.append(node)
+        elif tag in self.SELF_CLOSING_TAGS:
+            parent = self.unfinished[-1]
+            node = Element(tag, parent)
+            parent.children.append(node)
         else:
             parent = self.unfinished[-1] if self.unfinished else None
             node = Element(tag, parent)
             self.unfinished.append(node)
+
+    def get_tag_name(self, text):
+        parts = text.split()
+        return parts[0].casefold()
 
     def finish(self):
         while len(self.unfinished) > 1:
