@@ -74,6 +74,16 @@ class Element:
         return "<" + self.tag + ">"
 
 
+class Link(Element):
+    def __init__(self, tag, parent, id, href):
+        super().__init__(tag, parent)
+        self.id = id
+        self.href = href
+
+    def __repr__(self):
+        return f"<{self.tag} href={self.href}>"
+
+
 class HTMLParser:
     def __init__(self, body):
         self.body = body
@@ -102,8 +112,8 @@ class HTMLParser:
         node = Text(text, parent)
         parent.children.append(node)
 
-    def add_tag(self, tag):
-        tag = self.get_tag_name(tag)
+    def add_tag(self, text):
+        tag = self.get_tag_name(text)
         if tag.startswith("!"):
             return
         if tag.startswith("/"):
@@ -118,12 +128,22 @@ class HTMLParser:
             parent.children.append(node)
         else:
             parent = self.unfinished[-1] if self.unfinished else None
-            node = Element(tag, parent)
+            if tag == "a":
+                href = self.get_href(text)
+                node = Link(tag, parent, href)
+            else:
+                node = Element(tag, parent)
             self.unfinished.append(node)
 
     def get_tag_name(self, text):
         parts = text.split()
         return parts[0].casefold()
+
+    def get_href(self, text):
+        parts = text.split()
+        for attrpair in parts[1:]:
+            if "href" in attrpair:
+                return attrpair.split("=", 1)[1].replace('"', "")
 
     def finish(self):
         while len(self.unfinished) > 1:
@@ -165,14 +185,20 @@ class Browser:
             self.history.append(self.current)
         self.current = url
         tree = HTMLParser(url.request()).parse()
-        # self.print_tree(tree)
+        self.display(tree)
 
     def back(self):
         self.current = None
         self.load(self.history.pop())
 
-    def display(self):
-        pass
+    def display(self, tree):
+        if isinstance(tree, Text):
+            print(tree.text)
+            if isinstance(tree.parent, Link):
+                print(tree.parent.href)
+        else:
+            for child in tree.children:
+                self.display(child)
 
     def print_tree(self, node, indent=0):
         print(" " * indent, node)
