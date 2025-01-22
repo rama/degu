@@ -8,8 +8,7 @@ class URL:
         if not url.endswith(".html") and url[-1] != "/":
             url += "/"
         self.scheme, url = url.split("://", 1)
-        if self.scheme not in ["http", "https"]:
-            print("Unsupported protocol")
+        assert self.scheme in ["http", "https"]
         self.host, url = url.split("/", 1)
         if ":" in self.host:
             self.host, port = self.host.split(":")
@@ -22,7 +21,6 @@ class URL:
             self.path = "/" + url
         else:
             self.path = url
-        print(self.scheme, self.host, self.port, self.path)
 
     def request(self):
         s = socket.socket(
@@ -40,9 +38,7 @@ class URL:
         request += "\r\n"
         s.send(request.encode("utf8"))
         response = s.makefile("r", encoding="utf8", newline="\r\n")
-        statusline = response.readline()
-        version, status, explanation = statusline.split(" ", 2)
-        print(version, status, explanation)
+        _ = response.readline()
         response_headers = {}
         while True:
             line = response.readline()
