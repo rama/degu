@@ -1,5 +1,6 @@
 import socket
 import ssl
+import os
 
 
 class URL:
@@ -174,14 +175,14 @@ class HTMLParser:
 
 class Browser:
     def __init__(self):
-        import os
-
         self.size = os.get_terminal_size()
         self.history = []
         self.current = None
+        self.status = "INIT"
 
     def start(self):
-        DEGU = ["(\___/)", "(='.'=) ,", "(_)-(_)//"]
+        self.status = "STARTED"
+        DEGU = ["(\\___/)", "(='.'=) ,", "(_)-(_)//"]
         mid = (self.size.columns // 2, self.size.lines // 2)
         print("~~DEGU~~")
         for row in range(self.size.lines - 2):
@@ -190,29 +191,61 @@ class Browser:
                 print((" " * (mid[0] - 5)) + DEGU[distance_from_mid + 1])
             else:
                 print("")
+        self.run()
 
+    def run(self):
         address = input("Enter website URL: ")
-        self.load(URL(address))
+        self.status = "RUNNING"
+        response = self.load(address)
+        tree = HTMLParser(response).parse()
+        lines, links = self.get_content(tree)
+        page_num = 1
+        self.display(lines, page_num)
+        while self.status == "RUNNING":
+            user_input = input("<link_number>, Back, <RETURN> for more, or Quit: ")
+            print(user_input)
+            if user_input == "quit":
+                return
+            elif user_input == "":
+                page_num += 1
+                self.display(lines, page_num)
 
-    def load(self, url):
+    def load(self, address):
+        url = URL(address)
         if self.current:
             self.history.append(self.current)
         self.current = url
-        tree = HTMLParser(url.request()).parse()
-        self.display(tree)
+        response = url.request()
+        return response
+
+    def display(self, lines, page_num):
+        start = (page_num - 1) * self.size.lines
+        end = min(len(lines), page_num * self.size.lines - 1)
+        os.system("cls" if os.name == "nt" else "clear")
+        for line in lines[start:end]:
+            print(line)
 
     def back(self):
         self.current = None
         self.load(self.history.pop())
 
-    def display(self, tree):
-        if isinstance(tree, Text):
-            print(tree.text)
-            if isinstance(tree.parent, Link):
-                print(tree.parent.href)
-        else:
-            for child in tree.children:
-                self.display(child)
+    def get_content(self, tree):
+        stack = [tree]
+        lines = []
+        links = []
+        while len(stack) > 0:
+            node = stack.pop()
+            if isinstance(node, Text):
+                line = node.text
+                if isinstance(node.parent, Link):
+                    links.append(node.parent.href)
+                    line += f"[{len(links)}]"
+                lines.append(line)
+            else:
+                for child in node.children:
+                    stack.append(child)
+        lines.append("[End]")
+        return lines, links
 
     def print_tree(self, node, indent=0):
         print(" " * indent, node)
