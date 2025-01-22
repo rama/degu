@@ -75,9 +75,9 @@ class Element:
 
 
 class Link(Element):
-    def __init__(self, tag, parent, id, href):
+    def __init__(self, tag, parent, href):
         super().__init__(tag, parent)
-        self.id = id
+        # self.id = id
         self.href = href
 
     def __repr__(self):
@@ -180,6 +180,20 @@ class Browser:
         self.history = []
         self.current = None
 
+    def start(self):
+        DEGU = ["(\___/)", "(='.'=) ,", "(_)-(_)//"]
+        mid = (self.size.columns // 2, self.size.lines // 2)
+        print("~~DEGU~~")
+        for row in range(self.size.lines - 2):
+            distance_from_mid = row - mid[1]
+            if distance_from_mid in [-1, 0, 1]:
+                print((" " * (mid[0] - 5)) + DEGU[distance_from_mid + 1])
+            else:
+                print("")
+
+        address = input("Enter website URL: ")
+        self.load(URL(address))
+
     def load(self, url):
         if self.current:
             self.history.append(self.current)
@@ -209,4 +223,4 @@ class Browser:
 if __name__ == "__main__":
     import sys
 
-    Browser().load(URL(sys.argv[1]))
+    Browser().start()
