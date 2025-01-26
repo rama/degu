@@ -22,6 +22,16 @@ class URL:
         else:
             self.path = url
 
+    def _process_headers(self, headerBytes):
+        # decode and discard status line and blank lines
+        headerList = headerBytes.decode("utf8").split("\r\n")[1:-2]
+        headers = {}
+        for header in headerList:
+            header = header.split(":")
+            headers[header[0]] = header[1]
+        print(headers)
+        return headers
+
     def request(self):
         s = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
@@ -37,18 +47,18 @@ class URL:
         request += f"User-Agent: Degu/0.0.1\r\n"
         request += "\r\n"
         s.send(request.encode("utf8"))
-        response = s.makefile("r", encoding="utf8", newline="\r\n")
-        _ = response.readline()
-        response_headers = {}
-        while True:
-            line = response.readline()
-            if line == "\r\n":
-                break
-            header, value = line.split(":", 1)
-            response_headers[header.casefold()] = value.strip()
-        content = response.read()
+        headers = b""
+        while b"\r\n\r\n" not in headers:
+            headers += s.recv(1)
+
+        headers = self._process_headers(headers)
+        if "Transfer-Encoding" in headers and "chunked" in headers["Transfer-Encoding"]:
+            print("THIS IS CHUNKED")
+        else:
+            print("this is NOT chunked")
+
         s.close()
-        return content
+        # return content
 
 
 class Text:
@@ -199,7 +209,6 @@ class Browser:
         self.display(lines, page_num)
         while self.status == "RUNNING":
             user_input = input("<link_number>, Back, <RETURN> for more, or Quit: ")
-            print(user_input)
             if user_input == "quit":
                 return
             elif user_input == "":
@@ -252,4 +261,5 @@ class Browser:
 if __name__ == "__main__":
     import sys
 
-    Browser().start()
+    URL(sys.argv[1]).request()
+    # Browser().start()
