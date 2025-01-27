@@ -121,7 +121,7 @@ class Text:
         self.parent = parent
 
     def __repr__(self):
-        return repr(self.text)
+        return repr(f"Text Node with {len(self.text)} chars")
 
 
 class Element:
@@ -221,7 +221,7 @@ class HTMLParser:
                 if text:
                     self.add_text(text)
                 text = ""
-            elif c == ">":
+            elif in_tag and c == ">":
                 in_tag = False
                 self.add_tag(text)
                 text = ""
@@ -238,6 +238,7 @@ class Browser:
         self.history = []
         self.current = None
         self.status = "INIT"
+        self.TAGS_TO_IGNORE = ["head", "script", "style"]
 
     def start(self):
         self.status = "STARTED"
@@ -300,15 +301,16 @@ class Browser:
                     line += f"[{len(links)}]"
                 lines.append(line)
             else:
-                for child in node.children:
-                    stack.append(child)
+                if node.tag not in self.TAGS_TO_IGNORE:
+                    for child in node.children:
+                        stack.append(child)
         lines.append("[End]")
         return lines, links
 
     def print_tree(self, node, indent=0):
         print(" " * indent, node)
         for child in node.children:
-            self.print_tree(child, indent + 2)
+            self.print_tree(child, indent + 4)
 
 
 if __name__ == "__main__":
