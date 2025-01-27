@@ -22,16 +22,6 @@ class URL:
         else:
             self.path = url
 
-    def _process_headers(self, headerBytes):
-        # decode and discard status line and blank lines
-        headerList = headerBytes.decode("utf8").split("\r\n")[1:-2]
-        headers = {}
-        for header in headerList:
-            header = header.split(":")
-            headers[header[0]] = header[1]
-        print(headers)
-        return headers
-
     def request(self):
         s = socket.socket(
             family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
@@ -47,18 +37,59 @@ class URL:
         request += f"User-Agent: Degu/0.0.1\r\n"
         request += "\r\n"
         s.send(request.encode("utf8"))
-        headers = b""
-        while b"\r\n\r\n" not in headers:
-            headers += s.recv(1)
+        buffer = b""
+        headers_end = -1
+        while headers_end == -1:
+            buffer += s.recv(8192)
+            headers_end = buffer.find(b"\r\n\r\n")
 
-        headers = self._process_headers(headers)
+        headers = self._process_headers(buffer[:headers_end])
+        buffer = buffer[headers_end + 4 :]
         if "Transfer-Encoding" in headers and "chunked" in headers["Transfer-Encoding"]:
-            print("THIS IS CHUNKED")
+            return self._get_chunked_response(s, buffer).decode("utf8")
+        elif "Content-Length" in headers:
+            print(f"Content length is {headers["Content-Length"]} bytes")
         else:
-            print("this is NOT chunked")
+            print("receive till connection close")
 
         s.close()
         # return content
+
+    def _process_headers(self, headerBytes):
+        # decode to utf8 and discard status line and CRLFs
+        headerList = headerBytes.decode("utf8").split("\r\n")[1:]
+        headers = {}
+        for header in headerList:
+            header = header.split(":")
+            headers[header[0]] = header[1]
+        return headers
+
+    def _get_chunked_response(self, s, buffer):
+        response = b""
+        while True:
+            while b"\r\n" not in buffer:
+                buffer += s.recv(8192)
+            chunk_size, buffer = buffer.split(b"\r\n", 1)
+            chunk_size = int(chunk_size, 16)
+
+            if chunk_size == 0:
+                break
+
+            if chunk_size < len(buffer):
+                chunk = buffer[:chunk_size]
+                buffer = buffer[chunk_size + 2 :]  # +2 for CRLF
+            else:
+                chunk = buffer
+                chunk_size -= len(buffer)
+
+                while chunk_size > 0:
+                    buffer = s.recv(min(chunk_size, 8192))
+                    chunk += buffer
+                    chunk_size -= len(buffer)
+                buffer = b""  # reset buffer
+                s.recv(2)  # +2 for CRLF
+            response += chunk
+        return response
 
 
 class Text:
@@ -261,5 +292,5 @@ class Browser:
 if __name__ == "__main__":
     import sys
 
-    URL(sys.argv[1]).request()
-    # Browser().start()
+    # URL(sys.argv[1]).request()
+    Browser().start()
