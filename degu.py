@@ -46,17 +46,18 @@ class URL:
         headers = self._process_headers(buffer[:headers_end])
         buffer = buffer[headers_end + 4 :]
         if "Transfer-Encoding" in headers and "chunked" in headers["Transfer-Encoding"]:
-            return self._get_chunked_response(s, buffer).decode("utf8")
+            response = self._receive_chunked_response(s, buffer)
         elif "Content-Length" in headers:
-            print(f"Content length is {headers["Content-Length"]} bytes")
+            response = self._receive_fixed_length_response(
+                s, int(headers["Content-Length"]), buffer
+            )
         else:
-            print("receive till connection close")
-
+            response = self._receive_until_close(s, buffer)
         s.close()
-        # return content
+        return response.decode("utf8")
 
     def _process_headers(self, headerBytes):
-        # decode to utf8 and discard status line and CRLFs
+        # decode to utf8 and discard status line
         headerList = headerBytes.decode("utf8").split("\r\n")[1:]
         headers = {}
         for header in headerList:
@@ -64,7 +65,7 @@ class URL:
             headers[header[0]] = header[1]
         return headers
 
-    def _get_chunked_response(self, s, buffer):
+    def _receive_chunked_response(self, s, buffer):
         response = b""
         while True:
             while b"\r\n" not in buffer:
@@ -89,6 +90,27 @@ class URL:
                 buffer = b""  # reset buffer
                 s.recv(2)  # +2 for CRLF
             response += chunk
+        return response
+
+    def _receive_fixed_length_response(self, s, length, buffer):
+        response = buffer
+        remaining = length - len(buffer)
+        while remaining > 0:
+            buffer = s.recv(min(remaining, 8192))
+            response += buffer
+            remaining -= len(buffer)
+        return response
+
+    def _receive_until_close(self, s, buffer):
+        response = buffer
+        while True:
+            try:
+                buffer = s.recv(8192)
+                if not buffer:
+                    break
+                response += buffer
+            except:
+                break
         return response
 
 
