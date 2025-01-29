@@ -258,11 +258,7 @@ class Browser:
     def run(self):
         address = input("Enter website URL: ")
         self.status = "RUNNING"
-        response = self.load(address)
-        tree = HTMLParser(response).parse()
-        lines, links = self.get_content(tree)
-        page_num = 1
-        self.display(lines, page_num)
+        self.navigate(address)
         while self.status == "RUNNING":
             user_input = input(
                 f"<link_number>, Back, {"<RETURN> for more, " if not self.end_of_page else ""}or Quit: "
@@ -270,15 +266,18 @@ class Browser:
             if user_input == "quit":
                 return
             elif user_input.isdecimal():
-                response = self.load(links[int(user_input)])
-                tree = HTMLParser(response).parse()
-                lines, links = self.get_content(tree)
-                page_num = 1
-                self.display(lines, page_num)
+                self.navigate(self.links[int(user_input)])
             elif user_input == "":
                 if not self.end_of_page:
-                    page_num += 1
-                self.display(lines, page_num)
+                    self.page_num += 1
+                self.display()
+
+    def navigate(self, address):
+        response = self.load(address)
+        tree = HTMLParser(response).parse()
+        self.lines, self.links = self.get_content(tree)
+        self.page_num = 1
+        self.display()
 
     def load(self, address):
         url = URL(address)
@@ -288,15 +287,15 @@ class Browser:
         response = url.request()
         return response
 
-    def display(self, lines, page_num):
-        start = (page_num - 1) * self.size.lines
-        end = min(len(lines), page_num * self.size.lines - 1)
-        if lines[end - 1] == "[End]":
+    def display(self):
+        start = (self.page_num - 1) * self.size.lines
+        end = min(len(self.lines), self.page_num * self.size.lines - 1)
+        if self.lines[end - 1] == "[End]":
             self.end_of_page = True
         else:
             self.end_of_page = False
         os.system("cls" if os.name == "nt" else "clear")
-        for line in lines[start:end]:
+        for line in self.lines[start:end]:
             print(line)
 
     def back(self):
@@ -306,7 +305,8 @@ class Browser:
     def get_content(self, tree):
         stack = [tree]
         blocks = []
-        links = []
+        links = {}
+        link_count = 0
         current_block = ""
         while len(stack) > 0:
             node = stack.pop()
@@ -319,8 +319,9 @@ class Browser:
                     else:
                         current_block = node.text
                 if isinstance(node.parent, Link):
-                    links.append(node.parent.href)
-                    current_block += f"[{len(links)}]"
+                    link_count += 1
+                    links[link_count] = node.parent.href
+                    current_block += f"[{link_count}]"
                 blocks.append(current_block)
             else:
                 if node.parent and node.parent.tag not in self.INLINE_TAGS:
