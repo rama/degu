@@ -269,6 +269,12 @@ class Browser:
             )
             if user_input == "quit":
                 return
+            elif user_input.isdecimal():
+                response = self.load(links[int(user_input)])
+                tree = HTMLParser(response).parse()
+                lines, links = self.get_content(tree)
+                page_num = 1
+                self.display(lines, page_num)
             elif user_input == "":
                 if not self.end_of_page:
                     page_num += 1
