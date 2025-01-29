@@ -131,7 +131,7 @@ class Element:
         self.parent = parent
 
     def __repr__(self):
-        return "<" + self.tag + ">"
+        return f"<{self.tag}> {self.children[0].text if self.tag == 'span' else ""}"
 
 
 class Link(Element):
@@ -238,8 +238,36 @@ class Browser:
         self.history = []
         self.current = None
         self.status = "INIT"
-        self.TAGS_TO_IGNORE = ["head", "script", "style", "form"]
-        self.INLINE_TAGS = ["span", "a"]
+        self.TAGS_TO_IGNORE = ["head", "script", "style", "form", "svg", "img"]
+        self.INLINE_TAGS = [
+            "a",
+            "abbr",
+            "acronym",
+            "button",
+            "br",
+            "big",
+            "bdo",
+            "b",
+            "cite",
+            "code",
+            "dfn",
+            "i",
+            "em",
+            "img",
+            "kbd",
+            "label",
+            "map",
+            "object",
+            "output",
+            "tt",
+            "time",
+            "samp",
+            "small",
+            "span",
+            "strong",
+            "sub",
+            "sup",
+        ]
         self.end_of_page = True
 
     def start(self):
@@ -276,6 +304,7 @@ class Browser:
         response = self.load(address)
         tree = HTMLParser(response).parse()
         self.lines, self.links = self.get_content(tree)
+        # WIP self.get_blocks(tree)
         self.page_num = 1
         self.display()
 
@@ -301,6 +330,45 @@ class Browser:
     def back(self):
         self.current = None
         self.load(self.history.pop())
+
+    def get_blocks(self, tree):
+        stack = [tree]
+        blocks = []
+        current_block = []
+        while len(stack) > 0:
+            node = stack.pop()
+            if isinstance(node, Text) or node.tag in self.INLINE_TAGS:
+                current_block.append(node)
+            else:
+                if node.parent and node.parent.tag not in self.INLINE_TAGS:
+                    if len(current_block) > 0:
+                        blocks.append(reversed(current_block))
+                        current_block = []
+                if node.tag not in self.TAGS_TO_IGNORE:
+                    for child in node.children:
+                        stack.append(child)
+        blocks.reverse()
+        self.blocks_to_lines(blocks)
+
+    def blocks_to_lines(self, blocks):
+        self.lines = []
+        for block in blocks:
+            line = ""
+            for node in block:
+                if isinstance(node, Text):
+                    line += node.text
+                else:
+                    line += self.recurse_inline_children(node, line)
+            self.lines.append(line)
+        self.lines.append("[End]")
+
+    def recurse_inline_children(self, node, line):
+        for child in node.children:
+            if isinstance(child, Text):
+                line += child.text
+            else:
+                self.recurse_inline_children(child, line)
+        return line
 
     def get_content(self, tree):
         stack = [tree]
