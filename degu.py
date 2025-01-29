@@ -239,6 +239,8 @@ class Browser:
         self.current = None
         self.status = "INIT"
         self.TAGS_TO_IGNORE = ["head", "script", "style", "form"]
+        self.INLINE_TAGS = ["span", "a"]
+        self.end_of_page = True
 
     def start(self):
         self.status = "STARTED"
@@ -262,11 +264,14 @@ class Browser:
         page_num = 1
         self.display(lines, page_num)
         while self.status == "RUNNING":
-            user_input = input("<link_number>, Back, <RETURN> for more, or Quit: ")
+            user_input = input(
+                f"<link_number>, Back, {"<RETURN> for more, " if not self.end_of_page else ""}or Quit: "
+            )
             if user_input == "quit":
                 return
             elif user_input == "":
-                page_num += 1
+                if not self.end_of_page:
+                    page_num += 1
                 self.display(lines, page_num)
 
     def load(self, address):
@@ -280,6 +285,10 @@ class Browser:
     def display(self, lines, page_num):
         start = (page_num - 1) * self.size.lines
         end = min(len(lines), page_num * self.size.lines - 1)
+        if lines[end - 1] == "[End]":
+            self.end_of_page = True
+        else:
+            self.end_of_page = False
         os.system("cls" if os.name == "nt" else "clear")
         for line in lines[start:end]:
             print(line)
@@ -290,23 +299,32 @@ class Browser:
 
     def get_content(self, tree):
         stack = [tree]
-        lines = []
+        blocks = []
         links = []
+        current_block = ""
         while len(stack) > 0:
             node = stack.pop()
             if isinstance(node, Text):
-                line = node.text
+                if node.parent.tag in self.INLINE_TAGS:
+                    current_block += node.text
+                else:
+                    if node.parent.tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                        current_block = "\n" + node.text
+                    else:
+                        current_block = node.text
                 if isinstance(node.parent, Link):
                     links.append(node.parent.href)
-                    line += f"[{len(links)}]"
-                lines.append(line)
+                    current_block += f"[{len(links)}]"
+                blocks.append(current_block)
             else:
+                if node.parent and node.parent.tag not in self.INLINE_TAGS:
+                    current_block = ""
                 if node.tag not in self.TAGS_TO_IGNORE:
                     for child in node.children:
                         stack.append(child)
-        lines.reverse()
-        lines.append("[End]")
-        return lines, links
+        blocks.reverse()
+        blocks.append("[End]")
+        return blocks, links
 
     def print_tree(self, node, indent=0):
         print(" " * indent, node)
