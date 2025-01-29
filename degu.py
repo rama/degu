@@ -121,7 +121,7 @@ class Text:
         self.parent = parent
 
     def __repr__(self):
-        return repr(f"Text Node with {len(self.text)} chars")
+        return repr(f"{self.text[:min(20, len(self.text))]} ...{len(self.text)} chars")
 
 
 class Element:
@@ -238,7 +238,7 @@ class Browser:
         self.history = []
         self.current = None
         self.status = "INIT"
-        self.TAGS_TO_IGNORE = ["head", "script", "style"]
+        self.TAGS_TO_IGNORE = ["head", "script", "style", "form"]
 
     def start(self):
         self.status = "STARTED"
@@ -304,6 +304,7 @@ class Browser:
                 if node.tag not in self.TAGS_TO_IGNORE:
                     for child in node.children:
                         stack.append(child)
+        lines.reverse()
         lines.append("[End]")
         return lines, links
 
@@ -314,7 +315,7 @@ class Browser:
 
 
 if __name__ == "__main__":
-    import sys
+    # import sys
 
     # URL(sys.argv[1]).request()
     Browser().start()
