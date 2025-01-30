@@ -164,6 +164,7 @@ class HTMLParser:
             "source",
             "track",
             "wbr",
+            "svg"
         ]
 
     def add_text(self, text):
@@ -352,7 +353,8 @@ class Browser:
             else:
                 if node.parent and node.parent.tag not in self.INLINE_TAGS:
                     if len(current_block) > 0:
-                        blocks.append(reversed(current_block))
+                        current_block.reverse()
+                        blocks.append(current_block)
                         current_block = []
                 if node.tag not in self.TAGS_TO_IGNORE:
                     for child in node.children:
@@ -369,7 +371,12 @@ class Browser:
                 if isinstance(node, Text):
                     if node.parent.tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
                         self.lines.append("")
-                    line += node.text.strip()
+                    line += node.text
+                elif isinstance(node, Link):
+                    self.links.append(node.href)
+                    if len(line) > 0 and not line.endswith(" "):
+                        line += " "
+                    line += self.recurse_inline_children(node) + f"[{len(self.links)}]"
                 else:
                     line += self.recurse_inline_children(node)
             self.lines.append(line)
@@ -379,12 +386,11 @@ class Browser:
         text = ""
         for child in node.children:
             if isinstance(child, Text):
-                text += " " + child.text.strip()
-                if isinstance(node, Link):
-                    self.links.append(node.href)
-                    text += f"[{len(self.links)}]"
+                if len(text) > 0 and not text.endswith(" "):
+                    text += " "
+                text += child.text
             else:
-                self.recurse_inline_children(child)
+                text += self.recurse_inline_children(child)
         return text
 
     def print_tree(self, node, indent=0):
