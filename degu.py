@@ -303,7 +303,6 @@ class Browser:
     def navigate(self, address):
         response = self.load(address)
         tree = HTMLParser(response).parse()
-        # self.lines, self.links = self.get_content(tree)
         blocks = self.get_blocks(tree)
         self.blocks_to_lines(blocks)
         self.page_num = 1
@@ -377,37 +376,6 @@ class Browser:
             else:
                 self.recurse_inline_children(child)
         return text
-
-    def get_content(self, tree):
-        stack = [tree]
-        blocks = []
-        links = {}
-        link_count = 0
-        current_block = ""
-        while len(stack) > 0:
-            node = stack.pop()
-            if isinstance(node, Text):
-                if node.parent.tag in self.INLINE_TAGS:
-                    current_block += node.text
-                else:
-                    if node.parent.tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
-                        current_block = "\n" + node.text
-                    else:
-                        current_block = node.text
-                if isinstance(node.parent, Link):
-                    link_count += 1
-                    links[link_count] = node.parent.href
-                    current_block += f"[{link_count}]"
-                blocks.append(current_block)
-            else:
-                if node.parent and node.parent.tag not in self.INLINE_TAGS:
-                    current_block = ""
-                if node.tag not in self.TAGS_TO_IGNORE:
-                    for child in node.children:
-                        stack.append(child)
-        blocks.reverse()
-        blocks.append("[End]")
-        return blocks, links
 
     def print_tree(self, node, indent=0):
         print(" " * indent, node)
