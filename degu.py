@@ -299,6 +299,11 @@ class Browser:
                 if not self.end_of_page:
                     self.page_num += 1
                 self.display()
+            else:
+                try:
+                    self.navigate(user_input)
+                except:
+                    self.display()
 
     def navigate(self, address):
         response = self.load(address)
@@ -358,8 +363,8 @@ class Browser:
             for node in block:
                 if isinstance(node, Text):
                     if node.parent.tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
-                        line += "\n"
-                    line += node.text
+                        self.lines.append("")
+                    line += node.text.strip()
                 else:
                     line += self.recurse_inline_children(node)
             self.lines.append(line)
@@ -369,7 +374,7 @@ class Browser:
         text = ""
         for child in node.children:
             if isinstance(child, Text):
-                text += child.text
+                text += child.text.strip()
                 if isinstance(node, Link):
                     self.links.append(node.href)
                     text += f"[{len(self.links)}]"
@@ -384,7 +389,4 @@ class Browser:
 
 
 if __name__ == "__main__":
-    # import sys
-
-    # URL(sys.argv[1]).request()
     Browser().start()
