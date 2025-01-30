@@ -291,10 +291,10 @@ class Browser:
             user_input = input(
                 f"<link_number>, Back, {"<RETURN> for more, " if not self.end_of_page else ""}or Quit: "
             )
-            if user_input == "quit":
+            if user_input in ["quit", "q"]:
                 return
             elif user_input.isdecimal():
-                self.navigate(self.links[int(user_input)])
+                self.navigate(self.links[int(user_input) - 1])
             elif user_input == "":
                 if not self.end_of_page:
                     self.page_num += 1
@@ -303,8 +303,9 @@ class Browser:
     def navigate(self, address):
         response = self.load(address)
         tree = HTMLParser(response).parse()
-        self.lines, self.links = self.get_content(tree)
-        # WIP self.get_blocks(tree)
+        # self.lines, self.links = self.get_content(tree)
+        blocks = self.get_blocks(tree)
+        self.blocks_to_lines(blocks)
         self.page_num = 1
         self.display()
 
@@ -348,27 +349,34 @@ class Browser:
                     for child in node.children:
                         stack.append(child)
         blocks.reverse()
-        self.blocks_to_lines(blocks)
+        return blocks
 
     def blocks_to_lines(self, blocks):
         self.lines = []
+        self.links = []
         for block in blocks:
             line = ""
             for node in block:
                 if isinstance(node, Text):
+                    if node.parent.tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                        line += "\n"
                     line += node.text
                 else:
-                    line += self.recurse_inline_children(node, line)
+                    line += self.recurse_inline_children(node)
             self.lines.append(line)
         self.lines.append("[End]")
 
-    def recurse_inline_children(self, node, line):
+    def recurse_inline_children(self, node):
+        text = ""
         for child in node.children:
             if isinstance(child, Text):
-                line += child.text
+                text += child.text
+                if isinstance(node, Link):
+                    self.links.append(node.href)
+                    text += f"[{len(self.links)}]"
             else:
-                self.recurse_inline_children(child, line)
-        return line
+                self.recurse_inline_children(child)
+        return text
 
     def get_content(self, tree):
         stack = [tree]
