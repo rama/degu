@@ -239,7 +239,6 @@ class Browser:
         self.size = os.get_terminal_size()
         self.history = []
         self.current = None
-        self.status = "INIT"
         self.TAGS_TO_IGNORE = ["head", "script", "style", "form", "svg", "img"]
         self.INLINE_TAGS = [
             "a",
@@ -271,12 +270,22 @@ class Browser:
             "sup",
         ]
         self.end_of_page = True
+        
+        self.links = []
+    
+    def get_input(self, prompt):
+        return input("\033[33m" + prompt + "\033[0m")
+
+    def print_error(self, message):
+        print("\033[91m" + message + "\033[0m")
+
+    def print_highlight(self, message):
+        print("\033[93m" + message + "\033[0m")
 
     def start(self):
-        self.status = "STARTED"
         DEGU = ["(\\___/)", "(='.'=) ,", "(_)-(_)//"]
         mid = (self.size.columns // 2, self.size.lines // 2)
-        print("~~DEGU~~")
+        self.print_highlight("~~DEGU~~")
         for row in range(self.size.lines - 2):
             distance_from_mid = row - mid[1]
             if distance_from_mid in [-1, 0, 1]:
@@ -286,14 +295,12 @@ class Browser:
         self.run()
 
     def run(self):
-        address = input("Enter URL: ")
-        self.status = "RUNNING"
-        self.navigate(address)
-        while self.status == "RUNNING":
-            user_input = input(
-                "Enter URL, <link_number>, " +
-                f"{"[B]ack, " if len(self.history) > 0 else ""}"+
-                f"{"<RETURN> for more, " if not self.end_of_page else ""}"+
+        while True:
+            user_input = self.get_input(
+                "Enter URL, "+
+                f"{"<link_number>, " if len(self.links) > 0 else ""}" +
+                f"{"[B]ack, " if len(self.history) > 0 else ""}" +
+                f"{"<RETURN> for more, " if not self.end_of_page else ""}" +
                 "or [Q]uit: "
             ).casefold()
             if user_input in ["quit", "q"]:
@@ -302,24 +309,24 @@ class Browser:
                 if len(self.history) > 0:
                     self.back()
                 else:
-                    print("That's all there is. There isn't any more.")
+                    self.print_error("That's all there is. There isn't any more.")
             elif user_input.isdecimal():
                 if (index := int(user_input)) <= len(self.links):
                     address = self.links[index - 1]
                     self.navigate(address)
                 else:
-                    print(f"Oops! I couldn't find that link. Try a number between 1 and {len(self.links)}.")
+                    self.print_error(f"Oops! I couldn't find that link. Try a number between 1 and {len(self.links)}.")
             elif user_input == "":
                 if not self.end_of_page:
                     self.page_num += 1
                     self.display()
                 else:
-                    print("That's all there is. There isn't any more.")
+                    self.print_error("That's all there is. There isn't any more.")
             else:
                 try:
                     self.navigate(user_input)
                 except:
-                    print("Sorry! I only work with complete URLs.")
+                    self.print_error("Sorry! I only work with complete URLs.")
 
     def navigate(self, address):
         response = self.load(address)
@@ -331,6 +338,7 @@ class Browser:
 
     def load(self, address):
         url = URL(address)
+        self.print_highlight("Degu is fetching the webpage...")
         if self.current:
             self.history.append(self.current)
         self.current = address
@@ -338,8 +346,9 @@ class Browser:
         return response
 
     def display(self):
+        self.print_highlight("~~DEGU~~")
         start = (self.page_num - 1) * self.size.lines
-        end = min(len(self.lines), self.page_num * self.size.lines - 1)
+        end = min(len(self.lines), self.page_num * self.size.lines - 2)
         if self.lines[end - 1] == "[End]":
             self.end_of_page = True
         else:
