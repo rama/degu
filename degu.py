@@ -296,7 +296,7 @@ class Browser:
             if user_input in ["quit", "q"]:
                 return
             elif user_input.isdecimal():
-                if index := int(user_input) < len(self.links):
+                if (index := int(user_input)) < len(self.links):
                     address = self.links[index - 1]
                     self.navigate(address)
                 else:
