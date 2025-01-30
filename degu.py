@@ -5,6 +5,7 @@ import os
 
 class URL:
     def __init__(self, url):
+        url = url.casefold()
         if not url.endswith(".html") and url[-1] != "/":
             url += "/"
         self.scheme, url = url.split("://", 1)
@@ -33,8 +34,8 @@ class URL:
 
         request = f"GET {self.path} HTTP/1.1\r\n"
         request += f"Host: {self.host}\r\n"
-        request += f"Connection: close\r\n"
-        request += f"User-Agent: Degu/0.0.1\r\n"
+        request += "Connection: close\r\n"
+        request += "User-Agent: Degu/0.0.1\r\n"
         request += "\r\n"
         s.send(request.encode("utf8"))
         buffer = b""
@@ -202,7 +203,7 @@ class HTMLParser:
     def get_href(self, text):
         parts = text.split()
         for attrpair in parts[1:]:
-            if "href" in attrpair:
+            if "href" in attrpair.casefold():
                 return attrpair.split("=", 1)[1].replace('"', "")
 
     def finish(self):
@@ -294,7 +295,11 @@ class Browser:
             if user_input in ["quit", "q"]:
                 return
             elif user_input.isdecimal():
-                self.navigate(self.links[int(user_input) - 1])
+                if index := int(user_input) < len(self.links):
+                    address = self.links[index - 1]
+                    self.navigate(address)
+                else:
+                    self.display()
             elif user_input == "":
                 if not self.end_of_page:
                     self.page_num += 1
@@ -374,7 +379,7 @@ class Browser:
         text = ""
         for child in node.children:
             if isinstance(child, Text):
-                text += child.text.strip()
+                text += " " + child.text.strip()
                 if isinstance(node, Link):
                     self.links.append(node.href)
                     text += f"[{len(self.links)}]"
