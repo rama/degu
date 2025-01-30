@@ -286,30 +286,40 @@ class Browser:
         self.run()
 
     def run(self):
-        address = input("Enter website URL: ")
+        address = input("Enter URL: ")
         self.status = "RUNNING"
         self.navigate(address)
         while self.status == "RUNNING":
             user_input = input(
-                f"<link_number>, Back, {"<RETURN> for more, " if not self.end_of_page else ""}or Quit: "
-            )
+                "Enter URL, <link_number>, " +
+                f"{"[B]ack, " if len(self.history) > 0 else ""}"+
+                f"{"<RETURN> for more, " if not self.end_of_page else ""}"+
+                "or [Q]uit: "
+            ).casefold()
             if user_input in ["quit", "q"]:
                 return
+            elif user_input in ["back", "b"]:
+                if len(self.history) > 0:
+                    self.back()
+                else:
+                    print("That's all there is. There isn't any more.")
             elif user_input.isdecimal():
-                if (index := int(user_input)) < len(self.links):
+                if (index := int(user_input)) <= len(self.links):
                     address = self.links[index - 1]
                     self.navigate(address)
                 else:
-                    self.display()
+                    print(f"Oops! I couldn't find that link. Try a number between 1 and {len(self.links)}.")
             elif user_input == "":
                 if not self.end_of_page:
                     self.page_num += 1
-                self.display()
+                    self.display()
+                else:
+                    print("That's all there is. There isn't any more.")
             else:
                 try:
                     self.navigate(user_input)
                 except:
-                    self.display()
+                    print("Sorry! I only work with complete URLs.")
 
     def navigate(self, address):
         response = self.load(address)
@@ -323,7 +333,7 @@ class Browser:
         url = URL(address)
         if self.current:
             self.history.append(self.current)
-        self.current = url
+        self.current = address
         response = url.request()
         return response
 
@@ -340,7 +350,7 @@ class Browser:
 
     def back(self):
         self.current = None
-        self.load(self.history.pop())
+        self.navigate(self.history.pop())
 
     def get_blocks(self, tree):
         stack = [tree]
